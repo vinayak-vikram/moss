@@ -29,6 +29,7 @@ use libkernel::{
     memory::{
         address::{PA, VA},
         proc_vm::address_space::VirtualMemory,
+        ramdisk::Ramdisk,
         region::PhysMemoryRegion,
     },
 };
@@ -107,14 +108,16 @@ async fn launch_init(mut ctx: ProcessCtx, mut opts: KOptions) {
             PA::from_value(end_addr as _),
         );
 
-        Some(Box::new(
-            RamdiskBlkDev::new(
-                region,
-                VA::from_value(0xffff_9800_0000_0000),
-                &mut *ArchImpl::kern_address_space().lock_save_irq(),
-            )
-            .unwrap(),
-        ))
+        let rd = Ramdisk::map(
+            region,
+            VA::from_value(0xffff_9800_0000_0000),
+            &mut *ArchImpl::kern_address_space().lock_save_irq(),
+        )
+        .unwrap_or_else(|_| panic!("could not map initrd"));
+
+        Some(Box::new(RamdiskBlkDev::new(rd).unwrap_or_else(|_| {
+            panic!("could not create initrd block device")
+        })))
     } else {
         None
     };
