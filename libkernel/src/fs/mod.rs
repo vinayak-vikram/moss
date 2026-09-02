@@ -15,6 +15,7 @@ extern crate alloc;
 
 pub mod attr;
 pub mod blk;
+pub mod cpio;
 pub mod filesystems;
 pub mod path;
 pub mod pathbuf;
