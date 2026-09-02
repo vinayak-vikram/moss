@@ -61,6 +61,11 @@ fn align4(offset: usize) -> Result<usize> {
     Ok(offset.checked_add(3).ok_or(FsError::CpioError)? & !3)
 }
 
+/// Returns `true` if the buffer starts with a cpio header.
+pub fn is_cpio(buf: &[u8]) -> bool {
+    buf.starts_with(b"070701")
+}
+
 impl<'a> CpioArchive<'a> {
     pub fn new(buf: &'a [u8]) -> Self {
         Self {
@@ -84,7 +89,7 @@ impl<'a> CpioArchive<'a> {
 
         let header: CpioHeader = unsafe { ptr::read_unaligned(header_buf.as_ptr() as *const _) };
 
-        if header.magic != *b"070701" {
+        if !is_cpio(&header.magic) {
             return Err(FsError::CpioError.into());
         }
 

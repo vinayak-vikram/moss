@@ -17,6 +17,7 @@ pub mod attr;
 pub mod blk;
 pub mod cpio;
 pub mod filesystems;
+pub mod initramfs;
 pub mod path;
 pub mod pathbuf;
 
