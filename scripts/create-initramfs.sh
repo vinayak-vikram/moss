@@ -28,12 +28,31 @@ if [ -d "$base/build/initramfs" ]; then
 fi
 mkdir -p build/initramfs/{bin,lib,dev,proc,sys,tmp,new-root}
 
-# Copy busybox over and point sh at it, a shell is all we need in here
+# Copy busybox over and symlink the stuff that init uses
 cp "$base/build/rootfs/bin/busybox" "$base/build/initramfs/bin/"
-ln -s busybox "$base/build/initramfs/bin/sh"
+for applet in sh mount mkdir pivot_root chroot; do
+    ln -s busybox "$base/build/initramfs/bin/$applet"
+done
 
 # Copy the musl loader and libc that busybox is linked against
 cp -a "$base/build/rootfs"/lib/ld-musl-*.so.* "$base/build/rootfs"/lib/libc.musl-*.so.* "$base/build/initramfs/lib/"
 
 # make archive
+# init mounts the real root off the virtio disk and switches over to it
+cat > "$base/build/initramfs/init" <<'INIT'
+#!/bin/sh
+
+mount -t ext4 /dev/vda /new-root
+mkdir -p /new-root/old-root
+
+cd /new-root
+mkdir -p dev
+mount -t devfs devfs dev
+
+pivot_root . old-root
+
+exec chroot . /bin/sh <dev/console >dev/console 2>&1
+INIT
+chmod +x "$base/build/initramfs/init"
+
 (cd "$base/build/initramfs" && find . | cpio -o -H newc) > "$archive"
